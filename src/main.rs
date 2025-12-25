@@ -1,11 +1,26 @@
-mod config;
-mod error;
-
 use axum::{response::IntoResponse, routing::get, Router};
-use config::Config;
+use std::sync::Arc;
+use tower_http::cors::CorsLayer;
 
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use tracing::{info, error};
+
+mod config;
+mod error;
+mod models;
+mod db;
+mod utils;
+
+//mod handlers;
+//mod routes;
+
+use config::Config;
+
+#[derive(Clone)]
+struct AppState {
+    pub pool: sqlx::SqlitePool,
+    pub config: Config,
+}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -22,6 +37,14 @@ async fn main() -> anyhow::Result<()> {
 
     tokio::fs::create_dir_all(&config.storage_path).await?;
     info!("Storage path: {}", &config.storage_path);
+
+    let pool = db::sqlite::create_pool(&config.database_url).await?;
+    info!("Database connected: {}", config.database_url);
+
+    let state = Arc::new(AppState {
+        pool,
+        config: config.clone(),
+    });
 
     let app = Router::new().route("/health", get(health_handler));
 

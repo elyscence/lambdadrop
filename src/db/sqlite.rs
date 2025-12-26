@@ -1,4 +1,4 @@
-use sqlx::{SqlitePool, sqlite::SqlitePoolOptions};
+use sqlx::{SqlitePool, sqlite::SqlitePoolOptions, sqlite::SqliteConnectOptions};
 use anyhow::Result;
 use std::path::Path;
 use tokio::fs;
@@ -12,9 +12,13 @@ pub async fn create_pool(database_url: &str) -> Result<SqlitePool> {
         fs::create_dir_all(parent).await?;
     }
 
+    let options = SqliteConnectOptions::new()
+        .filename(db_path)
+        .create_if_missing(true);
+
     let pool = SqlitePoolOptions::new()
         .max_connections(5)
-        .connect(database_url)
+        .connect_with(options)
         .await?;
 
     sqlx::query(include_str!("../../migrations/0101_initial.sql"))

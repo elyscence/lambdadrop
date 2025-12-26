@@ -1,6 +1,6 @@
 use axum::{response::IntoResponse, routing::get, Router};
 use std::sync::Arc;
-use tower_http::cors::CorsLayer;
+use tower_http::cors::{Cors, CorsLayer};
 
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use tracing::{info, error};
@@ -11,7 +11,7 @@ mod models;
 mod db;
 mod utils;
 
-//mod handlers;
+mod handlers;
 //mod routes;
 
 use config::Config;
@@ -46,7 +46,10 @@ async fn main() -> anyhow::Result<()> {
         config: config.clone(),
     });
 
-    let app = Router::new().route("/health", get(health_handler));
+    let app = Router::new()
+        .route("/health", get(health_handler))
+        .layer(CorsLayer::permissive())
+        .with_state(state);
 
     let addr = format!("0.0.0.0:{}", config.port);
     let listener = tokio::net::TcpListener::bind(&addr).await?;
